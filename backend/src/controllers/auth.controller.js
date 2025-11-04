@@ -44,7 +44,7 @@ export const signup = async (request, response) => {
       response.status(201).json({ success: true, newUser });
 
       try {
-        await sendWelcomeEmail(savedUser.email, savedUser.fullName, ENV.CLIENT_URL )
+        await sendWelcomeEmail(savedUser.email, savedUser.fullName, ENV.CLIENT_URL)
       } catch (error) {
         console.error("Failed to send welcome email", error);
       }
@@ -56,4 +56,28 @@ export const signup = async (request, response) => {
     console.log("Error in signup controller: ", error.message);
     response.status(500).json({ success: false, message: "Internal Server Error." });
   }
+}
+
+export const login = async (request, response) => {
+  const { email, password } = request.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return response.status(400).json({ success: false, message: "Invalid Credentials." });
+    // Never tell the client which one is incorrect: email or password
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    if (!isPasswordCorrect) return response.status(400).json({ success: false, message: "Invalid Credentials." });
+
+    generateToken(user._id, response);
+
+    return response.status(200).json({ success: true, user });
+  } catch (error) {
+    console.log("Error in login controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+}
+
+export const logout = async (request, response) => {
+  response.cookie("jwt", "", { maxAge: 0 });
+  response.status(200).json({ success: true, message: "Logged Out." });
 }
