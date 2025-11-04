@@ -4,17 +4,21 @@ import path from "path"
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import { connectDatabase } from "./lib/database.js";
+import { ENV } from "./lib/env.js";
 
-const PORT = process.env.PORT || 3000;
+const PORT = ENV.PORT || 3000;
 
 const app = express();
 const __dirname = path.resolve();
+
+app.use(express.json());    // request.body
 
 app.use("/api/auth", authRoutes);
 app.use("/api/message", messageRoutes);
 
 // Make ready for deployment
-if (process.env.NODE_ENV === "production") {
+if (ENV.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
   app.get("*", (request, response) => {
@@ -22,4 +26,7 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => console.log(`Server is running on ${PORT} port.`));
+app.listen(PORT, () => {
+  console.log(`Server is running on ${PORT} port.`);
+  connectDatabase();
+});
