@@ -60,6 +60,7 @@ export const signup = async (request, response) => {
 
 export const login = async (request, response) => {
   const { email, password } = request.body;
+  if (!email || !password) return response.status(400).json({ success: false, message: "All fields are required." });
 
   try {
     const user = await User.findOne({ email });
