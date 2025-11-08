@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import ChatHeader from "./ChatHeader";
@@ -11,9 +11,26 @@ const ChatContainer = () => {
     useChatStore();
   const { authUser } = useAuthStore();
 
+  const messageEndRef = useRef(null);
+
   useEffect(() => {
+    if (!selectedUser?._id) return;
     getMessagesByUserId(selectedUser._id);
   }, [selectedUser, getMessagesByUserId]);
+
+  useEffect(() => {
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  if (!selectedUser) {
+    return (
+      <div className="flex items-center justify-center flex-1 text-slate-400">
+        Bir sohbet seçin
+      </div>
+    );
+  }
 
   return (
     <>
@@ -31,7 +48,7 @@ const ChatContainer = () => {
                 <div
                   className={`chat-bubble relative ${
                     message.senderId === authUser._id
-                      ? "bg-cyan-600 text-white"
+                      ? "bg-cyan-800 text-white"
                       : "bg-slate-800 text-slate-200"
                   }`}
                 >
@@ -44,15 +61,19 @@ const ChatContainer = () => {
                   )}
                   {message.text && <p className="mt-2">{message.text}</p>}
                   <p className="flex items-center gap-1 mt-1 text-xs opacity-75">
-                    {new Date(message.createdAt).toISOString().slice(11, 16)}
+                    {new Date(message.createdAt).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
                   </p>
                 </div>
               </div>
             ))}
+            <div ref={messageEndRef} />
           </div>
         ) : isMessagesLoading ? (
           <MessagesLoadingSkeleton />
-        ) :  (
+        ) : (
           <NoChatHistoryPlaceholder name={selectedUser.fullName} />
         )}
       </div>
