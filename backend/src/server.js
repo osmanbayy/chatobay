@@ -14,7 +14,7 @@ const PORT = ENV.PORT || 3000;
 const app = express();
 const __dirname = path.resolve();
 
-app.use(express.json());    // request.body
+app.use(express.json({limit: "10mb"}));    // request.body
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }))
 app.use(cookieParser());
 
