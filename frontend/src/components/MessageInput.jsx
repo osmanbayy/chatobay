@@ -78,7 +78,7 @@ const MessageInput = () => {
             setText(e.target.value);
             isSoundEnabled && playRandomKeyStrokeSound();
           }}
-          className="flex-1 px-4 py-2 border rounded-lg outline-none bg-slate-800/50 border-slate-700/50"
+          className="flex-1 px-4 py-2 text-white border rounded-lg outline-none bg-slate-800/50 border-slate-700/50"
           placeholder="Type your message..."
         />
 
