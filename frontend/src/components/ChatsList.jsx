@@ -2,10 +2,12 @@ import React, { useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import UsersLoadingSkeleton from "../components/UsersLoadingSkeleton";
 import NoChatsFound from "../components/NoChatsFound";
+import { useAuthStore } from "../store/useAuthStore";
 
 const ChatsList = () => {
   const { getMyChatPartners, chats, isUsersLoading, setSelectedUser } =
     useChatStore();
+  const { onlineUsers } = useAuthStore();
 
   useEffect(() => {
     getMyChatPartners();
@@ -23,8 +25,11 @@ const ChatsList = () => {
           onClick={() => setSelectedUser(chat)}
         >
           <div className="flex items-center gap-3">
-            {/* todo: fix this online status and make it work with socket */}
-            <div className="avatar online">
+            <div
+              className={`avatar ${
+                onlineUsers.includes(chat._id) ? "online" : "offline"
+              }`}
+            >
               <div className="rounded-full size-12">
                 <img
                   src={chat?.profilePic || "/avatar.png"}

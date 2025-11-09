@@ -8,10 +8,10 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import { connectDatabase } from "./lib/database.js";
 import { ENV } from "./lib/env.js";
+import { app, server } from "./lib/socket.js";
 
 const PORT = ENV.PORT || 3000;
 
-const app = express();
 const __dirname = path.resolve();
 
 app.use(express.json({limit: "10mb"}));    // request.body
@@ -30,7 +30,7 @@ if (ENV.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on ${PORT} port.`);
   connectDatabase();
 });
