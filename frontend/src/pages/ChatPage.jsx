@@ -8,9 +8,12 @@ import ContactsList from "../components/ContactsList";
 import ChatContainer from "../components/ChatContainer";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder";
 import LogoutModal from "../components/modals/LogoutModal";
+import ProfileImageModal from "../components/modals/ProfileImageModal";
+import { useAuthStore } from "../store/useAuthStore";
 
 const ChatPage = () => {
-  const { activeTab, selectedUser } = useChatStore();
+  const { authUser } = useAuthStore();
+  const { activeTab, selectedUser, selectedImage } = useChatStore();
   return (
     <div className="relative w-full max-w-6xl lg:h-[800px] h-[85vh]">
       <BorderAnimatedContainer>
@@ -49,8 +52,11 @@ const ChatPage = () => {
           </div>
         </div>
 
-        {/* Profile Image Modal */}
+        {/* Logout Modal */}
         <LogoutModal />
+
+        {/* Profile Image Modal */}
+        <ProfileImageModal authUser={authUser} selectedImage={selectedImage} />
         
       </BorderAnimatedContainer>
     </div>
