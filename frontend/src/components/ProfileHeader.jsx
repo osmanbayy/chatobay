@@ -1,17 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
-import { LogOutIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
+import {
+  LogOutIcon,
+  Volume2Icon,
+  VolumeOffIcon,
+  EyeIcon,
+  ImageIcon,
+  XIcon,
+} from "lucide-react";
+import ProfileImageModal from "./modals/ProfileImageModal";
 
 const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
 const ProfileHeader = () => {
   const { updateProfile, authUser, isUpdatingProfile, checkAuth } =
     useAuthStore();
-  const { isSoundEnabled, toggleSound } = useChatStore();
-  const [selectedImage, setSelectedImage] = useState(null);
+  const { isSoundEnabled, toggleSound, selectedImage, setSelectedImage } =
+    useChatStore();
 
   const fileInputRef = useRef();
+
+  const handleViewProfile = () => {
+    document.getElementById("profile_image_modal").showModal();
+  };
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -35,10 +47,11 @@ const ProfileHeader = () => {
     <div className="p-6 border-b border-slate-700/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Avatar */}
-          <div className="avatar online">
-            <button
-              onClick={() => fileInputRef.current.click()}
+          {/* Avatar with Dropdown */}
+          <div className="avatar online dropdown dropdown-hover dropdown-bottom">
+            <div
+              tabIndex={0}
+              role="button"
               className="relative overflow-hidden rounded-full size-14 group"
             >
               {/* Profile image */}
@@ -50,18 +63,41 @@ const ProfileHeader = () => {
                 }`}
               />
 
-              {/* Hover Change text */}
-              <div className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 bg-black/50 group-hover:opacity-100">
-                <span className="text-xs text-white">Change</span>
-              </div>
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center transition-opacity opacity-0 bg-black/50 group-hover:opacity-100" />
 
               {/* Loading Spinner */}
               {isUpdatingProfile && (
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 z-10 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
                 </div>
               )}
-            </button>
+            </div>
+
+            {/* Dropdown Menu */}
+            <ul
+              tabIndex={0}
+              className="dropdown-content menu bg-slate-800 rounded-box z-[1] w-48 p-2 shadow-lg border border-slate-700"
+            >
+              <li>
+                <button
+                  onClick={handleViewProfile}
+                  className="text-slate-200 hover:bg-slate-700"
+                >
+                  <EyeIcon className="size-4" />
+                  See Profile
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => fileInputRef.current.click()}
+                  className="text-slate-200 hover:bg-slate-700"
+                >
+                  <ImageIcon className="size-4" />
+                  Change Profile
+                </button>
+              </li>
+            </ul>
 
             <input
               type="file"
@@ -105,7 +141,7 @@ const ProfileHeader = () => {
                 .catch((error) => console.log("Audio play failed:", error));
               toggleSound();
             }}
-            data-tip={isSoundEnabled ? 'Turn off' : 'Turn on'}
+            data-tip={isSoundEnabled ? "Turn off" : "Turn on"}
           >
             {isSoundEnabled ? (
               <Volume2Icon className="size-5" />
