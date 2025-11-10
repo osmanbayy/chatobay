@@ -12,6 +12,8 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isMessagesLoading: false,
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
+  isProfileModalOpen: false,
+  isLogoutModalOpen: false,
 
   toggleSound: () => {
     localStorage.setItem("isSoundEnabled", !get().isSoundEnabled);
@@ -21,6 +23,10 @@ export const useChatStore = create((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
+
+  setIsProfileModalOpen: () => set(state => ({ isProfileModalOpen: !state.isProfileModalOpen })),
+  
+  setIsLogoutModalOpen: () => set(state => ({ isLogoutModalOpen: !state.isLogoutModalOpen })),
 
   getAllContacts: async () => {
     set({ isUsersLoading: true });
