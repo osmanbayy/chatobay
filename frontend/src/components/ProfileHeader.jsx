@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { LogOutIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
@@ -6,7 +6,7 @@ import { LogOutIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
 const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
 const ProfileHeader = () => {
-  const { logout, updateProfile, authUser, isUpdatingProfile } = useAuthStore();
+  const { logout, updateProfile, authUser, isUpdatingProfile, checkAuth } = useAuthStore();
   const { isSoundEnabled, toggleSound } = useChatStore();
   const [selectedImage, setSelectedImage] = useState(null);
 
@@ -25,6 +25,10 @@ const ProfileHeader = () => {
       await updateProfile({ profilePic: base64Image });
     };
   };
+
+  useEffect(() => {
+    checkAuth()
+  }, [])
 
   return (
     <div className="p-6 border-b border-slate-700/50">

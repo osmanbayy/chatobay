@@ -13,19 +13,39 @@ const ChatPage = () => {
   return (
     <div className="relative w-full max-w-6xl h-[800px]">
       <BorderAnimatedContainer>
-        {/* Left Side */}
-        <div className="flex flex-col w-80 bg-slate-800/50 backdrop-blur-sm">
-          <ProfileHeader />
-          <ActiveTabSwitch />
-
-          <div className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {activeTab === "chats" ? <ChatsList /> : <ContactsList />}
-          </div>
+        {/* Mobile (default) view: show only one pane like WhatsApp */}
+        <div className="flex w-full h-full md:hidden">
+          {selectedUser ? (
+            <div className="flex flex-col flex-1 bg-slate-900/50 backdrop-blur-sm">
+              <ChatContainer />
+            </div>
+          ) : (
+            <div className="flex flex-col flex-1 bg-slate-800/50 backdrop-blur-sm">
+              <ProfileHeader />
+              <ActiveTabSwitch />
+              <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+                {activeTab === "chats" ? <ChatsList /> : <ContactsList />}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right Side */}
-        <div className="flex flex-col flex-1 bg-slate-900/50 backdrop-blur-sm">
-          {selectedUser ? <ChatContainer /> : <NoConversationPlaceholder />}
+        {/* Desktop / Tablet view: two panes side-by-side */}
+        <div className="hidden w-full h-full md:flex">
+          {/* Left Side */}
+          <div className="flex flex-col w-80 bg-slate-800/50 backdrop-blur-sm">
+            <ProfileHeader />
+            <ActiveTabSwitch />
+
+            <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+              {activeTab === "chats" ? <ChatsList /> : <ContactsList />}
+            </div>
+          </div>
+
+          {/* Right Side */}
+          <div className="flex flex-col flex-1 bg-slate-900/50 backdrop-blur-sm">
+            {selectedUser ? <ChatContainer /> : <NoConversationPlaceholder />}
+          </div>
         </div>
       </BorderAnimatedContainer>
     </div>
