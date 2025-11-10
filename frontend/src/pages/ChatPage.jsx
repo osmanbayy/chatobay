@@ -7,11 +7,12 @@ import ChatsList from "../components/ChatsList";
 import ContactsList from "../components/ContactsList";
 import ChatContainer from "../components/ChatContainer";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder";
+import LogoutModal from "../components/modals/LogoutModal";
 
 const ChatPage = () => {
   const { activeTab, selectedUser } = useChatStore();
   return (
-    <div className="relative w-full max-w-6xl h-[800px]">
+    <div className="relative w-full max-w-6xl lg:h-[800px] h-[85vh]">
       <BorderAnimatedContainer>
         {/* Mobile (default) view: show only one pane like WhatsApp */}
         <div className="flex w-full h-full md:hidden">
@@ -47,6 +48,10 @@ const ChatPage = () => {
             {selectedUser ? <ChatContainer /> : <NoConversationPlaceholder />}
           </div>
         </div>
+
+        {/* Profile Image Modal */}
+        <LogoutModal />
+        
       </BorderAnimatedContainer>
     </div>
   );

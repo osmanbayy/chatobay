@@ -6,7 +6,8 @@ import { LogOutIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
 const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 
 const ProfileHeader = () => {
-  const { logout, updateProfile, authUser, isUpdatingProfile, checkAuth } = useAuthStore();
+  const { updateProfile, authUser, isUpdatingProfile, checkAuth } =
+    useAuthStore();
   const { isSoundEnabled, toggleSound } = useChatStore();
   const [selectedImage, setSelectedImage] = useState(null);
 
@@ -27,8 +28,8 @@ const ProfileHeader = () => {
   };
 
   useEffect(() => {
-    checkAuth()
-  }, [])
+    checkAuth();
+  }, []);
 
   return (
     <div className="p-6 border-b border-slate-700/50">
@@ -84,15 +85,18 @@ const ProfileHeader = () => {
         <div className="flex items-center gap-4">
           {/* Logout Button */}
           <button
-            onClick={logout}
-            className="transition-colors text-slate-400 hover:text-slate-200"
+            onClick={() => {
+              document.getElementById("logout_modal").showModal();
+            }}
+            className="transition-colors text-slate-400 hover:text-slate-200 lg:tooltip"
+            data-tip="Logout"
           >
             <LogOutIcon className="size-5" />
           </button>
 
           {/* Sound Toggle Button */}
           <button
-            className="transition-colors text-slate-400 hover:text-slate-200"
+            className="transition-colors text-slate-400 hover:text-slate-200 lg:tooltip"
             onClick={() => {
               // play click sound before toggling
               mouseClickSound.currentTime = 0; // reset to start
@@ -101,6 +105,7 @@ const ProfileHeader = () => {
                 .catch((error) => console.log("Audio play failed:", error));
               toggleSound();
             }}
+            data-tip={isSoundEnabled ? 'Turn off' : 'Turn on'}
           >
             {isSoundEnabled ? (
               <Volume2Icon className="size-5" />
