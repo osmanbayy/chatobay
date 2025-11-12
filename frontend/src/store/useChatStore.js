@@ -9,6 +9,7 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   activeTab: "chats",
   selectedUser: null,
+  viewingProfile: null, // null | { user, isOwnProfile: boolean }
   isUsersLoading: false,
   isMessagesLoading: false,
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
@@ -24,6 +25,8 @@ export const useChatStore = create((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
+
+  setViewingProfile: (viewingProfile) => set({ viewingProfile }),
 
   setSelectedImage: (selectedImage) => set({ selectedImage }),
 
