@@ -62,9 +62,7 @@ export const useChatStore = create((set, get) => ({
           unreadCounts[chatId] = chat.unreadCount;
         }
       });
-      
-      console.log("Chats loaded with unread counts:", unreadCounts);
-      console.log("Chats data:", chats.map(c => ({ _id: c._id, id: c.id, unreadCount: c.unreadCount })));
+
       set({ chats, unreadCounts });
     } catch (error) {
       console.error("Error in getMyChatPartners: ", error);
@@ -78,7 +76,14 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const response = await axiosInstance.get(`/message/${userId}`);
-      set({ messages: response.data.messages });
+      // Backend'den gelen mesajların isRead durumunu koru
+      const messagesWithStatus = response.data.messages.map(msg => ({
+        ...msg,
+        isRead: msg.isRead || false,
+        isDelivered: msg.isDelivered !== undefined ? msg.isDelivered : true
+      }));
+      
+      set({ messages: messagesWithStatus });
       
       // Reset this user's notification count when messages are loaded
       const { unreadCounts } = get();
@@ -105,18 +110,49 @@ export const useChatStore = create((set, get) => ({
       receiverId: selectedUser._id,
       text: messageData.text,
       image: messageData.image,
-      createdAt: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
+      isRead: false,
+      isDelivered: false,
       isOptimistic: true
     }
     set({ messages: [...messages, optimisticMessage] });
 
     try {
       const response = await axiosInstance.post(`/message/send/${selectedUser._id}`, messageData);
+      
+      // Optimistic message'ı gerçek mesajla değiştir
+      const currentMessages = get().messages;
+      const updatedMessages = currentMessages.map(msg => {
+        if (msg._id === tempId) {
+          return { 
+            ...response.data, 
+            isDelivered: false,
+            isRead: false 
+          };
+        }
+        return msg;
+      });
+      
+      const messageExists = updatedMessages.some(msg => 
+        msg._id === response.data._id || 
+        msg._id?.toString() === response.data._id?.toString()
+      );
+      
+      if (!messageExists) {
+        updatedMessages.push({ 
+          ...response.data, 
+          isDelivered: false, 
+          isRead: false 
+        });
+      }
 
-      set({ messages: messages.concat(response.data) });
+      set({ messages: updatedMessages });
 
     } catch (error) {
       console.error("Error in sendMessage: ", error);
+      const currentMessages = get().messages;
+      const filteredMessages = currentMessages.filter(msg => msg._id !== tempId);
+      set({ messages: filteredMessages });
       toast.error(error?.response?.data?.message || "Something went wrong.");
     }
   },
@@ -126,26 +162,52 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
+    if (!socket) {
+      console.warn("Socket not available for subscribing to messages");
+      return;
+    }
     
-    // When new message came
-    socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+    // When new message came from selectedUser
+    const handleNewMessage = async (newMessage) => {
+      const selectedUserId = selectedUser._id?.toString() || selectedUser._id;
+      const messageSenderId = newMessage.senderId?.toString() || newMessage.senderId;
+      const isMessageSentFromSelectedUser = messageSenderId === selectedUserId;
+      
+      if (isMessageSentFromSelectedUser) {
+        const currentMessages = get().messages;
+        // Check if message already exists (avoid duplicates)
+        const messageExists = currentMessages.some(msg => {
+          const msgId = msg._id?.toString() || msg._id;
+          const newMsgId = newMessage._id?.toString() || newMessage._id;
+          return msgId === newMsgId;
+        });
+        
+        if (!messageExists) {
+          const newMessageWithStatus = { ...newMessage, isDelivered: false, isRead: false };
+          set({ messages: [...currentMessages, newMessageWithStatus] });
+          
+          try {
+            await axiosInstance.post("/message/mark-read", { senderId: messageSenderId });
+          } catch (error) {
+            console.error("Error marking message as read:", error);
+          }
+        }
 
-      const currentMessages = get().messages;
-      set({ messages: [...currentMessages, newMessage] });
-
-      if (isSoundEnabled) {
-        const notificationSound = new Audio("/sounds/notification.mp3")
-        notificationSound.currentTime = 0;  // reset to start
-        notificationSound.play().catch(e => console.log("Audio play failed: ", e));
+        if (isSoundEnabled) {
+          const notificationSound = new Audio("/sounds/notification.mp3")
+          notificationSound.currentTime = 0;
+          notificationSound.play().catch(e => console.log("Audio play failed: ", e));
+        }
       }
-    });
+    };
 
+    socket.on("newMessage", handleNewMessage);
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
+    if (socket) {
+      socket.off("newMessage");
+    }
   }
 }))

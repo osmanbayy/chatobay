@@ -18,21 +18,6 @@ const ChatsList = () => {
     getMyChatPartners();
   }, [getMyChatPartners]);
 
-  // Debug için
-  useEffect(() => {
-    console.log("ChatsList - unreadCounts:", unreadCounts);
-    console.log(
-      "ChatsList - chats:",
-      chats.map((c) => ({
-        _id: c._id,
-        id: c.id,
-        name: c.fullName,
-        unreadCount: c.unreadCount,
-        unreadCountsCheck: unreadCounts[c._id] || unreadCounts[c.id],
-      }))
-    );
-  }, [unreadCounts, chats]);
-
   if (isUsersLoading) return <UsersLoadingSkeleton />;
   if (chats.length === 0) return <NoChatsFound />;
 

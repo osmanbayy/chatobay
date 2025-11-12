@@ -68,15 +68,8 @@ export const getMessagesByUserId = async (request, response) => {
     const myId = request.user._id;
     const { id: userToChatId } = request.params;
 
-    const messages = await Message.find({
-      $or: [
-        { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
-      ],
-    }).sort({ createdAt: 1 });
-
-    // Mark all messages from this user as read
-    await Message.updateMany(
+    // Mark all messages from this user as read FIRST
+    const updatedMessages = await Message.updateMany(
       {
         senderId: userToChatId,
         receiverId: myId,
@@ -86,6 +79,32 @@ export const getMessagesByUserId = async (request, response) => {
         $set: { isRead: true }
       }
     );
+
+    // If messages were marked as read, notify the sender
+    if (updatedMessages.modifiedCount > 0) {
+      const senderSocketId = getReceiverSocketId(userToChatId);
+      if (senderSocketId) {
+        // Get all message IDs that were just marked as read
+        const readMessages = await Message.find({
+          senderId: userToChatId,
+          receiverId: myId,
+          isRead: true
+        }).select("_id").sort({ createdAt: -1 }).limit(updatedMessages.modifiedCount);
+
+        io.to(senderSocketId).emit("messagesRead", {
+          messageIds: readMessages.map(msg => msg._id.toString()),
+          readBy: myId.toString()
+        });
+      }
+    }
+
+    // Now get all messages with updated read status
+    const messages = await Message.find({
+      $or: [
+        { senderId: myId, receiverId: userToChatId },
+        { senderId: userToChatId, receiverId: myId },
+      ],
+    }).sort({ createdAt: 1 });
 
     // Count unread messages and report via socket
     const unreadCount = await Message.countDocuments({
@@ -109,6 +128,56 @@ export const getMessagesByUserId = async (request, response) => {
     response.status(500).json({ error: "Internal server error" });
   }
 }
+
+export const markMessagesAsRead = async (request, response) => {
+  try {
+    const myId = request.user._id;
+    const { senderId } = request.body;
+
+    if (!senderId) {
+      return response.status(400).json({ success: false, message: "Sender ID is required." });
+    }
+
+    // Mark all messages from this sender as read
+    const updatedMessages = await Message.updateMany(
+      {
+        senderId: senderId,
+        receiverId: myId,
+        isRead: false
+      },
+      {
+        $set: { isRead: true }
+      }
+    );
+
+    // If messages were marked as read, notify the sender
+    if (updatedMessages.modifiedCount > 0) {
+      const senderSocketId = getReceiverSocketId(senderId);
+      if (senderSocketId) {
+        // Get all message IDs that were just marked as read
+        const readMessages = await Message.find({
+          senderId: senderId,
+          receiverId: myId,
+          isRead: true
+        }).select("_id").sort({ createdAt: -1 }).limit(updatedMessages.modifiedCount);
+
+        io.to(senderSocketId).emit("messagesRead", {
+          messageIds: readMessages.map(msg => msg._id.toString()),
+          readBy: myId.toString()
+        });
+      }
+    }
+
+    return response.status(200).json({ 
+      success: true, 
+      message: "Messages marked as read.",
+      count: updatedMessages.modifiedCount 
+    });
+  } catch (error) {
+    console.log("Error in markMessagesAsRead controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};
 
 export const sendMessage = async (request, response) => {
   try {
@@ -166,6 +235,14 @@ export const sendMessage = async (request, response) => {
         userId: senderId.toString(),
         unreadCount: unreadCount
       });
+
+      // Notify sender that message was delivered (receiver is online)
+      const senderSocketId = getReceiverSocketId(senderId);
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("messageDelivered", {
+          messageId: newMessage._id.toString()
+        });
+      }
     } else {
       console.log(`Receiver ${receiverId} is not online, unreadCount will be updated on next chat load`);
     }

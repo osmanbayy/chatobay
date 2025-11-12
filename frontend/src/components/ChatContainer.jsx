@@ -5,6 +5,7 @@ import ChatHeader from "./ChatHeader";
 import NoChatHistoryPlaceholder from "./NoChatHistoryPlaceholder";
 import MessageInput from "./MessageInput";
 import MessagesLoadingSkeleton from "./MessagesLoadingSkeleton";
+import MessageStatus from "./MessageStatus";
 
 const ChatContainer = () => {
   const { 
@@ -69,12 +70,21 @@ const ChatContainer = () => {
                     />
                   )}
                   {message.text && <p className="mt-2">{message.text}</p>}
-                  <p className="flex items-center gap-1 mt-1 text-xs opacity-75">
-                    {new Date(message.createdAt).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit"
-                    })}
-                  </p>
+                  <div className="flex items-center justify-end gap-1 mt-1">
+                    <span className="text-xs opacity-75">
+                      {new Date(message.createdAt).toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
+                    {/* Message status for our messages */}
+                    {message.senderId === authUser._id && (
+                      <MessageStatus 
+                        isRead={message.isRead} 
+                        isDelivered={message.isDelivered !== false}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
