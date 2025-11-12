@@ -19,10 +19,20 @@ export const socketAuthMiddleware = async (socket, next) => {
     }
 
     // find the user from database
-    const user = await User.findById(decoded.userId).select("-password");
+    const user = await User.findById(decoded.userId).select("-password -verificationCode -verificationCodeExpiresAt");
     if (!user) {
       console.error("Socket connection rejected: User not found.");
       return next(new Error("Unauthorized - User not found."));
+    }
+
+    if (!user.isVerified) {
+      console.error("Socket connection rejected: Email not verified.");
+      return next(new Error("Unauthorized - Email not verified."));
+    }
+
+    if (!user.onboardingCompleted) {
+      console.error("Socket connection rejected: Onboarding incomplete.");
+      return next(new Error("Unauthorized - Onboarding incomplete."));
     }
 
     // attach user info to socket

@@ -11,66 +11,74 @@ export const useAuthStore = create((set, get) => ({
   isSigningUp: false,
   isLoggingIn: false,
   isUpdatingProfile: false,
+  isVerifyingEmail: false,
+  isResendingCode: false,
+  isCompletingOnboarding: false,
   socket: null,
   onlineUsers: [],
+
+  setAuthUser: (user) => {
+    set({ authUser: user });
+
+    if (user?.isVerified && user?.onboardingCompleted) {
+      get().connectSocket();
+    } else {
+      get().disconnectSocket();
+    }
+  },
 
   checkAuth: async () => {
     try {
       const response = await axiosInstance.get("/auth/check");
-      set({ authUser: response.data });
-      get().connectSocket();
+      get().setAuthUser(response.data);
     } catch (error) {
       console.error("Error in authCheck: ", error);
-      set({ authUser: null })
+      set({ authUser: null });
+      get().disconnectSocket();
     } finally {
       set({ isCheckingAuth: false });
     }
   },
 
   signup: async (data) => {
-    set({ isSigningUp: true })
+    set({ isSigningUp: true });
     try {
       const response = await axiosInstance.post("/auth/signup", data);
-      set({ authUser: response.data });
+      get().setAuthUser(response.data?.user);
 
       toast.success("Account created successfully!");
-
-      get().connectSocket();
     } catch (error) {
       console.error("Error in signup: ", error);
-      toast.error(error.response.data.message);
+      toast.error(error?.response?.data?.message || "Failed to create account.");
     } finally {
-      set({ isSigningUp: false })
+      set({ isSigningUp: false });
     }
   },
 
   login: async (data) => {
-    set({ isLoggingIn: true })
+    set({ isLoggingIn: true });
     try {
       const response = await axiosInstance.post("/auth/login", data);
-      set({ authUser: response?.data });
+      get().setAuthUser(response?.data?.user);
 
       toast.success("Logged in successfully!");
-
-      get().connectSocket();
     } catch (error) {
       console.error("Error in login: ", error);
-      toast.error(error?.response?.data?.message);
+      toast.error(error?.response?.data?.message || "Failed to login.");
     } finally {
-      set({ isLoggingIn: false })
+      set({ isLoggingIn: false });
     }
   },
 
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      set({ authUser: null });
+      get().setAuthUser(null);
 
       toast.success("Logged out successfully!");
-      get().disconnectSocket();
     } catch (error) {
       console.error("Error in logout: ", error);
-      toast.error(error.response.data.message);
+      toast.error(error?.response?.data?.message || "Failed to logout.");
     }
   },
 
@@ -78,19 +86,62 @@ export const useAuthStore = create((set, get) => ({
     set({ isUpdatingProfile: true });
     try {
       const response = await axiosInstance.put("/auth/update-profile", data);
-      set({ authUser: response.data });
+      get().setAuthUser(response?.data?.updatedUser);
       toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Error in update profile: ", error);
-      toast.error(error.response.data.message);
+      toast.error(error?.response?.data?.message || "Failed to update profile.");
     } finally {
       set({ isUpdatingProfile: false });
     }
   },
 
+  verifyEmail: async (code) => {
+    set({ isVerifyingEmail: true });
+    try {
+      const response = await axiosInstance.post("/auth/verify-email", { code });
+      get().setAuthUser(response?.data?.user);
+      toast.success("Email verified successfully!");
+    } catch (error) {
+      console.error("Error in verify email: ", error);
+      toast.error(error?.response?.data?.message || "Failed to verify email.");
+      throw error;
+    } finally {
+      set({ isVerifyingEmail: false });
+    }
+  },
+
+  resendVerificationCode: async () => {
+    set({ isResendingCode: true });
+    try {
+      await axiosInstance.post("/auth/resend-code");
+      toast.success("Verification code sent!");
+    } catch (error) {
+      console.error("Error in resend verification code: ", error);
+      toast.error(error?.response?.data?.message || "Failed to resend verification code.");
+    } finally {
+      set({ isResendingCode: false });
+    }
+  },
+
+  completeOnboarding: async (data) => {
+    set({ isCompletingOnboarding: true });
+    try {
+      const response = await axiosInstance.put("/auth/onboarding", data);
+      get().setAuthUser(response?.data?.user);
+      toast.success("Onboarding completed!");
+    } catch (error) {
+      console.error("Error in complete onboarding: ", error);
+      toast.error(error?.response?.data?.message || "Failed to complete onboarding.");
+      throw error;
+    } finally {
+      set({ isCompletingOnboarding: false });
+    }
+  },
+
   connectSocket: () => {
     const { authUser } = get();
-    if (!authUser || get().socket?.connected) return;
+    if (!authUser || !authUser.isVerified || !authUser.onboardingCompleted || get().socket?.connected) return;
 
     const socket = io(BASE_URL, {
       withCredentials: true,    // this ensures cookies are sent with the connection
@@ -106,6 +157,8 @@ export const useAuthStore = create((set, get) => ({
   },
 
   disconnectSocket: () => {
-    if (get().socket.connected) get().socket.disconnect();
+    const socket = get().socket;
+    if (socket?.connected) socket.disconnect();
+    set({ socket: null, onlineUsers: [] });
   },
 }));

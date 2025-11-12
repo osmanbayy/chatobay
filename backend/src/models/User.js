@@ -19,6 +19,30 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  about: {
+    type: String,
+    default: ""
+  },
+  phone: {
+    type: String,
+    default: ""
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  onboardingCompleted: {
+    type: Boolean,
+    default: false
+  },
+  verificationCode: {
+    type: String,
+    default: null
+  },
+  verificationCodeExpiresAt: {
+    type: Date,
+    default: null
+  }
 }, { timestamps: true });
 
 const User = mongoose.model("User", userSchema);
