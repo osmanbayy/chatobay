@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
   activeTab: "chats",
   selectedUser: null,
   viewingProfile: null, // null | { user, isOwnProfile: boolean }
+  unreadCounts: {}, // { userId: count }
   isUsersLoading: false,
   isMessagesLoading: false,
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
@@ -51,7 +52,20 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const response = await axiosInstance.get("/message/chats");
-      set({ chats: response.data });
+      const chats = response.data;
+      
+      // Update unread counts
+      const unreadCounts = {};
+      chats.forEach((chat) => {
+        const chatId = chat._id || chat.id;
+        if (chat.unreadCount && chat.unreadCount > 0) {
+          unreadCounts[chatId] = chat.unreadCount;
+        }
+      });
+      
+      console.log("Chats loaded with unread counts:", unreadCounts);
+      console.log("Chats data:", chats.map(c => ({ _id: c._id, id: c.id, unreadCount: c.unreadCount })));
+      set({ chats, unreadCounts });
     } catch (error) {
       console.error("Error in getMyChatPartners: ", error);
       toast.error(error.response.data.message);
@@ -64,7 +78,14 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const response = await axiosInstance.get(`/message/${userId}`);
-      set({ messages: response.data.messages })
+      set({ messages: response.data.messages });
+      
+      // Reset this user's notification count when messages are loaded
+      const { unreadCounts } = get();
+      const updatedCounts = { ...unreadCounts };
+      // UserId comes as a string, use it directly
+      delete updatedCounts[userId];
+      set({ unreadCounts: updatedCounts });
     } catch (error) {
       console.error("Error in getMyChatPartners: ", error);
       toast.error(error?.response?.data?.message);
@@ -105,6 +126,8 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
+    
+    // When new message came
     socket.on("newMessage", (newMessage) => {
       const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
@@ -117,7 +140,8 @@ export const useChatStore = create((set, get) => ({
         notificationSound.currentTime = 0;  // reset to start
         notificationSound.play().catch(e => console.log("Audio play failed: ", e));
       }
-    })
+    });
+
   },
 
   unsubscribeFromMessages: () => {

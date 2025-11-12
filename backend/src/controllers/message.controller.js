@@ -36,7 +36,27 @@ export const getChatPartners = async (request, response) => {
 
     const chatPartners = await User.find({ _id: { $in: chatPartnerIds } }).select("-password");
 
-    response.status(200).json(chatPartners);
+    // Calculate the number of unread messages for each user
+    const chatPartnersWithUnread = await Promise.all(
+      chatPartners.map(async (partner) => {
+        const unreadCount = await Message.countDocuments({
+          senderId: partner._id,
+          receiverId: loggedInUserId,
+          isRead: false
+        });
+
+        if (unreadCount > 0) {
+          console.log(`Unread messages from ${partner.fullName} (${partner._id}):`, unreadCount);
+        }
+
+        return {
+          ...partner.toObject(),
+          unreadCount
+        };
+      })
+    );
+
+    response.status(200).json(chatPartnersWithUnread);
   } catch (error) {
     console.error("Error in getChatPartners: ", error.message);
     response.status(500).json({ error: "Internal server error" });
@@ -53,7 +73,35 @@ export const getMessagesByUserId = async (request, response) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
+    }).sort({ createdAt: 1 });
+
+    // Mark all messages from this user as read
+    await Message.updateMany(
+      {
+        senderId: userToChatId,
+        receiverId: myId,
+        isRead: false
+      },
+      {
+        $set: { isRead: true }
+      }
+    );
+
+    // Count unread messages and report via socket
+    const unreadCount = await Message.countDocuments({
+      senderId: userToChatId,
+      receiverId: myId,
+      isRead: false
     });
+
+    // Send notification updates via socket
+    const receiverSocketId = getReceiverSocketId(myId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("unreadCountUpdated", {
+        userId: userToChatId,
+        unreadCount: 0
+      });
+    }
 
     response.status(200).json({ success: true, messages });
   } catch (error) {
@@ -96,8 +144,30 @@ export const sendMessage = async (request, response) => {
     await newMessage.save();
 
     const receiverSocketId = getReceiverSocketId(receiverId);
+    
+    // Calculate the number of unread messages for the recipient
+    const unreadCount = await Message.countDocuments({
+      senderId: senderId,
+      receiverId: receiverId,
+      isRead: false
+    });
+
+    console.log(`Unread count for user ${receiverId} from ${senderId}:`, unreadCount);
+
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
+      
+      io.to(receiverSocketId).emit("unreadCountUpdated", {
+        userId: senderId.toString(),
+        unreadCount: unreadCount
+      });
+      
+      console.log(`Sent unreadCountUpdated to socket ${receiverSocketId}:`, {
+        userId: senderId.toString(),
+        unreadCount: unreadCount
+      });
+    } else {
+      console.log(`Receiver ${receiverId} is not online, unreadCount will be updated on next chat load`);
     }
 
     response.status(201).json(newMessage);

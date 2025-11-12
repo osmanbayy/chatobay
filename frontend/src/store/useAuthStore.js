@@ -167,6 +167,24 @@ export const useAuthStore = create((set, get) => ({
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds })
     });
+
+    // listen for unread count updates (her zaman dinle)
+    // Dynamic import to avoid circular dependency
+    socket.on("unreadCountUpdated", async ({ userId, unreadCount }) => {
+      console.log("unreadCountUpdated event received:", { userId, unreadCount });
+      const { useChatStore } = await import("./useChatStore.js");
+      const { unreadCounts } = useChatStore.getState();
+      const updatedCounts = { ...unreadCounts };
+      
+      if (unreadCount > 0) {
+        updatedCounts[userId] = unreadCount;
+      } else {
+        delete updatedCounts[userId];
+      }
+      
+      console.log("Updated unreadCounts:", updatedCounts);
+      useChatStore.setState({ unreadCounts: updatedCounts });
+    });
   },
 
   disconnectSocket: () => {
