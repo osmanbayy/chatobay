@@ -168,10 +168,9 @@ export const useAuthStore = create((set, get) => ({
       set({ onlineUsers: userIds })
     });
 
-    // listen for unread count updates (her zaman dinle)
+    // listen for unread count updates (listen always)
     // Dynamic import to avoid circular dependency
     socket.on("unreadCountUpdated", async ({ userId, unreadCount }) => {
-      console.log("unreadCountUpdated event received:", { userId, unreadCount });
       const { useChatStore } = await import("./useChatStore.js");
       const { unreadCounts } = useChatStore.getState();
       const updatedCounts = { ...unreadCounts };
@@ -181,9 +180,38 @@ export const useAuthStore = create((set, get) => ({
       } else {
         delete updatedCounts[userId];
       }
-      
-      console.log("Updated unreadCounts:", updatedCounts);
       useChatStore.setState({ unreadCounts: updatedCounts });
+    });
+
+    // Global message delivered listener (for all messages)
+    socket.on("messageDelivered", async ({ messageId }) => {
+      const { useChatStore } = await import("./useChatStore.js");
+      const { messages } = useChatStore.getState();
+      const updatedMessages = messages.map(msg => {
+        const msgId = msg._id?.toString() || msg._id;
+        const targetId = messageId?.toString() || messageId;
+        return msgId === targetId
+          ? { ...msg, isDelivered: true }
+          : msg;
+      });
+      useChatStore.setState({ messages: updatedMessages });
+    });
+
+    // Global messages read listener (for all messages)
+    socket.on("messagesRead", async ({ messageIds }) => {
+      const { useChatStore } = await import("./useChatStore.js");
+      const { messages } = useChatStore.getState();
+      const updatedMessages = messages.map(msg => {
+        const msgId = msg._id?.toString() || msg._id;
+        const isRead = messageIds.some(id => {
+          const readId = id?.toString() || id;
+          return msgId === readId;
+        });
+        return isRead
+          ? { ...msg, isRead: true, isDelivered: true }
+          : msg;
+      });
+      useChatStore.setState({ messages: updatedMessages });
     });
   },
 
