@@ -4,8 +4,8 @@ import { ArrowLeft, XIcon } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 
 const ChatHeader = () => {
-  const { selectedUser, setSelectedUser } = useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { selectedUser, setSelectedUser, setViewingProfile } = useChatStore();
+  const { onlineUsers, authUser } = useAuthStore();
 
   const isOnline = onlineUsers.includes(selectedUser._id);
 
@@ -39,14 +39,22 @@ const ChatHeader = () => {
           </div>
         </div>
 
-        <div>
-          <h3 className="font-medium text-slate-300">
+        <button
+          onClick={() => {
+            setViewingProfile({ 
+              user: selectedUser, 
+              isOwnProfile: selectedUser._id === authUser._id 
+            });
+          }}
+          className="text-left hover:opacity-80 transition-opacity"
+        >
+          <h3 className="font-medium text-slate-300 cursor-pointer">
             {selectedUser.fullName}
           </h3>
           <p className="text-sm text-slate-400">
             {isOnline ? "Online" : "Offline"}
           </p>
-        </div>
+        </button>
       </div>
 
       <button

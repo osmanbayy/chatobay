@@ -1,6 +1,7 @@
 import express from "express";
 import {
   completeOnboarding,
+  deleteAccount,
   login,
   logout,
   resendVerificationCode,
@@ -23,6 +24,7 @@ router.post("/resend-code", protectRoute, resendVerificationCode);
 
 router.put("/update-profile", protectRoute, updateProfile);
 router.put("/onboarding", protectRoute, completeOnboarding);
+router.delete("/delete-account", protectRoute, deleteAccount);
 
 router.get("/check", protectRoute, (request, response) => response.status(200).json(request.user));
 

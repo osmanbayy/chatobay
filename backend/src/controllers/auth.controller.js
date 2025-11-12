@@ -3,6 +3,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { ENV } from "../lib/env.js";
 import { generateToken, generateVerificationCode, sanitizeUser } from "../lib/utils.js";
 import User from "../models/User.js";
+import Message from "../models/Message.js";
 import bcrypt from "bcryptjs";
 
 export const signup = async (request, response) => {
@@ -224,6 +225,31 @@ export const completeOnboarding = async (request, response) => {
     return response.status(200).json({ success: true, user: sanitizeUser(updatedUser) });
   } catch (error) {
     console.log("Error in completeOnboarding controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};
+
+export const deleteAccount = async (request, response) => {
+  try {
+    const userId = request.user._id;
+
+    // Delete all messages sent or received by this user
+    await Message.deleteMany({
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    });
+
+    // Delete the user account
+    await User.findByIdAndDelete(userId);
+
+    // Clear the JWT cookie
+    response.cookie("jwt", "", { maxAge: 0 });
+
+    return response.status(200).json({ success: true, message: "Account deleted successfully." });
+  } catch (error) {
+    console.log("Error in deleteAccount controller: ", error.message);
     response.status(500).json({ success: false, message: "Internal Server Error." });
   }
 };

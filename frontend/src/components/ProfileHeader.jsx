@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import {
@@ -16,7 +16,7 @@ const mouseClickSound = new Audio("/sounds/mouse-click.mp3");
 const ProfileHeader = () => {
   const { updateProfile, authUser, isUpdatingProfile, checkAuth } =
     useAuthStore();
-  const { isSoundEnabled, toggleSound, selectedImage, setSelectedImage } =
+  const { isSoundEnabled, toggleSound, selectedImage, setSelectedImage, setViewingProfile } =
     useChatStore();
 
   const fileInputRef = useRef();
@@ -109,12 +109,17 @@ const ProfileHeader = () => {
           </div>
 
           {/* Username & online text */}
-          <div>
-            <h3 className="text-base font-medium text-slate-200 max-w-[180px] truncate">
+          <button
+            onClick={() => {
+              setViewingProfile({ user: authUser, isOwnProfile: true });
+            }}
+            className="text-left hover:opacity-80 transition-opacity"
+          >
+            <h3 className="text-base font-medium text-slate-200 max-w-[180px] truncate cursor-pointer">
               {authUser.fullName}
             </h3>
             <p className="text-xs text-slate-400">Online</p>
-          </div>
+          </button>
         </div>
 
         {/* Buttons */}
