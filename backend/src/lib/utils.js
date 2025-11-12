@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { ENV } from "./env.js";
 
@@ -18,3 +19,19 @@ export const generateToken = (userId, response) => {
 
   return token;
 }
+
+export const generateVerificationCode = () => {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+};
+
+export const sanitizeUser = (user) => {
+  if (!user) return null;
+
+  const userObject = typeof user.toObject === "function" ? user.toObject() : { ...user };
+
+  delete userObject.password;
+  delete userObject.verificationCode;
+  delete userObject.verificationCodeExpiresAt;
+
+  return userObject;
+};

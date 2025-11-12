@@ -35,9 +35,12 @@ const ContactsList = () => {
                 />
               </div>
             </div>
-            <h4 className="font-medium truncate text-slate-200">
+            <div className="flex flex-col">
+              <h4 className="font-medium truncate text-slate-200">
               {contact?.fullName}
             </h4>
+            <p className="text-sm text-gray-400">{contact?.about}</p>
+            </div>
           </div>
         </div>
       ))}

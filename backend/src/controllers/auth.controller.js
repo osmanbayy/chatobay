@@ -1,8 +1,8 @@
-import { sendWelcomeEmail } from "../emails/emailHandlers.js";
+import { sendVerificationEmail } from "../emails/emailHandlers.js";
 import cloudinary from "../lib/cloudinary.js";
 import { ENV } from "../lib/env.js";
-import { generateToken } from "../lib/utils.js";
-import User from "../models/User.js"
+import { generateToken, generateVerificationCode, sanitizeUser } from "../lib/utils.js";
+import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 
 export const signup = async (request, response) => {
@@ -32,22 +32,28 @@ export const signup = async (request, response) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const rawVerificationCode = generateVerificationCode();
+    const hashedVerificationCode = await bcrypt.hash(rawVerificationCode, 10);
+    const verificationCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
     const newUser = new User({
       fullName,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      verificationCode: hashedVerificationCode,
+      verificationCodeExpiresAt
     });
 
     if (newUser) {
       const savedUser = await newUser.save();
       generateToken(savedUser._id, response);
 
-      response.status(201).json({ success: true, newUser });
+      response.status(201).json({ success: true, user: sanitizeUser(savedUser) });
 
       try {
-        await sendWelcomeEmail(savedUser.email, savedUser.fullName, ENV.CLIENT_URL)
+        await sendVerificationEmail(savedUser.email, savedUser.fullName, rawVerificationCode, ENV.CLIENT_URL);
       } catch (error) {
-        console.error("Failed to send welcome email", error);
+        console.error("Failed to send verification email", error);
       }
     } else {
       response.status(400).json({ success: false, message: "Invalid user data." });
@@ -72,7 +78,7 @@ export const login = async (request, response) => {
 
     generateToken(user._id, response);
 
-    return response.status(200).json({ success: true, user });
+    return response.status(200).json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     console.log("Error in login controller: ", error.message);
     response.status(500).json({ success: false, message: "Internal Server Error." });
@@ -94,9 +100,130 @@ export const updateProfile = async (request, response) => {
     const uploadResponse = await cloudinary.uploader.upload(profilePic);
     const updatedUser = await User.findByIdAndUpdate(userId, { profilePic: uploadResponse.secure_url }, { new: true });
 
-    response.status(200).json({ success: true, message: "Profile picture updated.", updatedUser });
+    response.status(200).json({ success: true, message: "Profile picture updated.", updatedUser: sanitizeUser(updatedUser) });
   } catch (error) {
     console.log("Error in updateProfile controller: ", error.message);
     response.status(500).json({ success: false, message: "Internal Server Error." });
   }
 }
+
+export const verifyEmail = async (request, response) => {
+  const { code } = request.body;
+
+  if (!code) {
+    return response.status(400).json({ success: false, message: "Verification code is required." });
+  }
+
+  try {
+    const user = await User.findById(request.user._id);
+
+    if (!user) {
+      return response.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (user.isVerified) {
+      return response.status(400).json({ success: false, message: "Email is already verified." });
+    }
+
+    if (!user.verificationCode || !user.verificationCodeExpiresAt) {
+      return response.status(400).json({ success: false, message: "No verification code found. Request a new one." });
+    }
+
+    if (user.verificationCodeExpiresAt < new Date()) {
+      return response.status(400).json({ success: false, message: "Verification code has expired. Request a new one." });
+    }
+
+    const isCodeValid = await bcrypt.compare(code, user.verificationCode);
+    if (!isCodeValid) {
+      return response.status(400).json({ success: false, message: "Invalid verification code." });
+    }
+
+    user.isVerified = true;
+    user.verificationCode = null;
+    user.verificationCodeExpiresAt = null;
+
+    const savedUser = await user.save();
+
+    return response.status(200).json({ success: true, user: sanitizeUser(savedUser) });
+  } catch (error) {
+    console.log("Error in verifyEmail controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};
+
+export const resendVerificationCode = async (request, response) => {
+  try {
+    const user = await User.findById(request.user._id);
+
+    if (!user) {
+      return response.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (user.isVerified) {
+      return response.status(400).json({ success: false, message: "Email is already verified." });
+    }
+
+    const rawVerificationCode = generateVerificationCode();
+    const hashedVerificationCode = await bcrypt.hash(rawVerificationCode, 10);
+    const verificationCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    user.verificationCode = hashedVerificationCode;
+    user.verificationCodeExpiresAt = verificationCodeExpiresAt;
+
+    await user.save();
+
+    await sendVerificationEmail(user.email, user.fullName, rawVerificationCode, ENV.CLIENT_URL);
+
+    return response.status(200).json({ success: true, message: "Verification code resent." });
+  } catch (error) {
+    console.log("Error in resendVerificationCode controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};
+
+export const completeOnboarding = async (request, response) => {
+  const { profilePic, about, phone } = request.body;
+  if(!phone || phone.trim() === ""){
+    return response.status(400).json({ success: false, message: "Phone number is required." });
+  }
+
+  try {
+    const user = await User.findById(request.user._id);
+
+    if (!user) {
+      return response.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (!user.isVerified) {
+      return response.status(403).json({ success: false, message: "Email must be verified before completing onboarding." });
+    }
+
+    const updates = {
+      onboardingCompleted: true,
+    };
+
+    if (typeof about === "string") {
+      updates.about = about;
+    }
+
+    if (typeof phone === "string") {
+      updates.phone = phone;
+    }
+
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updates.profilePic = uploadResponse.secure_url;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      updates,
+      { new: true }
+    );
+
+    return response.status(200).json({ success: true, user: sanitizeUser(updatedUser) });
+  } catch (error) {
+    console.log("Error in completeOnboarding controller: ", error.message);
+    response.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};

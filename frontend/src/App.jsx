@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router";
 import ChatPage from "./pages/ChatPage";
 import SignupPage from "./pages/SignupPage";
 import LoginPage from "./pages/LoginPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import { useAuthStore } from "./store/useAuthStore";
 import PageLoader from "./components/PageLoader";
 import { Toaster } from "react-hot-toast";
@@ -14,9 +16,7 @@ const App = () => {
     checkAuth();
   }, [checkAuth]);
 
-  console.log({authUser});
-
-  if(isCheckingAuth) return <PageLoader />
+  if (isCheckingAuth) return <PageLoader />;
   
   return (
     <div className="relative flex items-center justify-center min-h-screen p-4 overflow-hidden bg-zinc-950">
@@ -28,7 +28,15 @@ const App = () => {
       <Routes>
         <Route
           path="/"
-          element={authUser ? <ChatPage /> : <Navigate to={"/login"} />}
+          element={
+            authUser
+              ? authUser.isVerified
+                ? authUser.onboardingCompleted
+                  ? <ChatPage />
+                  : <Navigate to="/onboarding" />
+                : <Navigate to="/verify" />
+              : <Navigate to="/login" />
+          }
         />
         <Route
           path="/signup"
@@ -38,6 +46,29 @@ const App = () => {
           path="/login"
           element={!authUser ? <LoginPage /> : <Navigate to={"/"} />}
         />
+        <Route
+          path="/verify"
+          element={
+            !authUser
+              ? <Navigate to="/login" />
+              : authUser.isVerified
+                ? <Navigate to={authUser.onboardingCompleted ? "/" : "/onboarding"} />
+                : <VerifyEmailPage />
+          }
+        />
+        <Route
+          path="/onboarding"
+          element={
+            !authUser
+              ? <Navigate to="/login" />
+              : !authUser.isVerified
+                ? <Navigate to="/verify" />
+                : authUser.onboardingCompleted
+                  ? <Navigate to="/" />
+                  : <OnboardingPage />
+          }
+        />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 
       <Toaster />
