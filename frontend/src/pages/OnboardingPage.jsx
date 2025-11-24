@@ -6,8 +6,22 @@ import { LoaderIcon } from "react-hot-toast";
 
 const OnboardingPage = () => {
   const { completeOnboarding, isCompletingOnboarding, authUser } = useAuthStore();
+  const PHONE_PREFIX = "+90 ";
+
+  const formatPhoneValue = (value = "") => {
+    const digits = value.replace(/^\+?90/, "").replace(/\D/g, "").slice(0, 10);
+    const parts = [];
+
+    if (digits.length > 0) parts.push(digits.slice(0, Math.min(3, digits.length)));
+    if (digits.length > 3) parts.push(digits.slice(3, Math.min(6, digits.length)));
+    if (digits.length > 6) parts.push(digits.slice(6));
+
+    const formattedDigits = parts.join(" ").trim();
+    return formattedDigits ? `${PHONE_PREFIX}${formattedDigits}` : PHONE_PREFIX;
+  };
+
   const [about, setAbout] = useState(authUser?.about || "");
-  const [phone, setPhone] = useState(authUser?.phone || "");
+  const [phone, setPhone] = useState(formatPhoneValue(authUser?.phone || ""));
   const [profilePreview, setProfilePreview] = useState(authUser?.profilePic || "");
   const [profileData, setProfileData] = useState("");
 
@@ -38,11 +52,15 @@ const OnboardingPage = () => {
     }
   };
 
+  const handlePhoneChange = (event) => {
+    setPhone(formatPhoneValue(event.target.value || ""));
+  };
+
   return (
-    <div className="flex items-center justify-center w-full p-4">
-      <div className="relative w-full max-w-5xl md:h-[720px] h-[650px]">
-        <BorderAnimatedContainer>
-          <div className="grid items-center justify-center h-full gap-8 px-8 py-10 md:grid-cols-2">
+    <div className="flex items-center justify-center w-full p-4 min-h-svh">
+      <div className="relative w-full max-w-5xl md:h-[720px] min-h-[560px]">
+        <BorderAnimatedContainer className="overflow-y-auto md:overflow-hidden">
+          <div className="grid items-center justify-center h-full gap-8 px-6 py-8 md:px-8 md:py-10 md:grid-cols-2">
             <div className="flex flex-col justify-center h-full">
               <div className="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-cyan-500/10 text-cyan-300 w-max">
                 <SparklesIcon className="w-4 h-4" />
@@ -96,7 +114,7 @@ const OnboardingPage = () => {
                     onChange={(event) => setAbout(event.target.value)}
                     rows={4}
                     placeholder="Tell others a little about yourself..."
-                    className="w-full py-3 pl-10 pr-4 text-sm transition border rounded-lg bg-slate-900/70 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
+                    className="w-full py-3 pl-10 pr-4 text-sm transition border rounded-lg resize-none bg-slate-900/70 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -110,7 +128,8 @@ const OnboardingPage = () => {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
+                    onChange={handlePhoneChange}
+                    onBlur={(event) => setPhone(formatPhoneValue(event.target.value))}
                     placeholder="+90 555 555 5555"
                     className="w-full py-3 pl-10 pr-4 text-sm transition border rounded-lg bg-slate-900/70 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none"
                   />

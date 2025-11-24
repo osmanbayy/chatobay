@@ -20,3 +20,4 @@ const MessageStatus = ({ isRead, isDelivered }) => {
 
 export default MessageStatus;
 
+
