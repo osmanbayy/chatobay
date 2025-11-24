@@ -93,15 +93,31 @@ export const logout = async (request, response) => {
 
 export const updateProfile = async (request, response) => {
   try {
-    const { profilePic } = request.body;
-    if (!profilePic) return response.status(400).json({ success: false, message: "Profile Picture is required." });
-
+    const { profilePic, about } = request.body || {};
     const userId = request.user._id;
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
-    const updatedUser = await User.findByIdAndUpdate(userId, { profilePic: uploadResponse.secure_url }, { new: true });
+    const updates = {};
 
-    response.status(200).json({ success: true, message: "Profile picture updated.", updatedUser: sanitizeUser(updatedUser) });
+    if (typeof about === "string") {
+      const trimmedAbout = about.trim();
+      if (trimmedAbout.length > 500) {
+        return response.status(400).json({ success: false, message: "About section must be 500 characters or less." });
+      }
+      updates.about = trimmedAbout;
+    }
+
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updates.profilePic = uploadResponse.secure_url;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return response.status(400).json({ success: false, message: "Nothing to update." });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
+
+    response.status(200).json({ success: true, message: "Profile updated.", updatedUser: sanitizeUser(updatedUser) });
   } catch (error) {
     console.log("Error in updateProfile controller: ", error.message);
     response.status(500).json({ success: false, message: "Internal Server Error." });

@@ -35,7 +35,11 @@ const ProfileHeader = () => {
     reader.onloadend = async () => {
       const base64Image = reader.result;
       setSelectedImage(base64Image);
-      await updateProfile({ profilePic: base64Image });
+      try {
+        await updateProfile({ profilePic: base64Image });
+      } catch (error) {
+        console.error("Failed to update profile picture:", error);
+      }
     };
   };
 
